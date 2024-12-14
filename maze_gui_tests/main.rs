@@ -4,7 +4,8 @@ struct MainState
 {
     screen: ggez::graphics::ScreenImage,
     grid: Grid,
-    quad: ggez::graphics::Quad,
+    _quad: ggez::graphics::Quad,
+    quad_batch: ggez::graphics::InstanceArray,
 }
 
 impl MainState
@@ -14,12 +15,16 @@ impl MainState
         let grid = Grid::new(512, 512);
         let screen = ggez::graphics::ScreenImage::new(context, ggez::graphics::ImageFormat::Rgba8Unorm, 1.0, 1.0, 1);
         let quad = ggez::graphics::Quad;
+        let quad_batch = ggez::graphics::InstanceArray::new(context, None);
+
+        println!("main state created");
 
         MainState 
         {  
             screen,
             grid,
-            quad,
+            _quad: quad,
+            quad_batch,
         }
     }
 }
@@ -28,41 +33,90 @@ impl ggez::event::EventHandler for MainState
 {
     fn draw(&mut self, context: &mut ggez::Context) -> Result<(), ggez::GameError> 
     {
+        // println!("start of draw call {}", context.time.ticks());
         use ggez::graphics;
 
         let mut canvas = graphics::Canvas::from_screen_image(context, &mut self.screen, graphics::Color::WHITE);
+        // println!("canvas created");
 
         // canvas.set_sampler(graphics::Sampler::nearest_clamp());
+        let ref grid = self.grid;
+        // let ref q = self.quad;
 
-        let ref q = self.quad;
-
-        // draw grid
-        for row in 0..self.grid.height
+        let draw_params = 
+        (0..grid.height).into_iter()
+        .map(|r| 
+        (0..grid.width).into_iter()
+        .map(move |c|
         {
-            for col in 0..self.grid.width
-            {
-                // let col = row;
+            let transform = graphics::Transform::Values 
+            { 
+                dest: [(2 * r) as f32, (2 * c) as f32].into(), 
+                rotation: 0.0, 
+                scale: [2.0, 2.0].into(), 
+                offset: [0.0, 0.0].into(), 
+            };
 
-                if *self.grid.index(col, row).unwrap() != 0
+            let color = 
+            match grid.index(c, r).unwrap()
+            {
+                0 =>
                 {
-                    let transform = graphics::Transform::Values { dest: [(2 * row) as f32, (2 * col) as f32].into(), rotation: 0.0, scale: [2.0, 2.0].into(), offset: [0.0, 0.0].into() };
-                    let param = 
-                        graphics::DrawParam::new()
-                        .transform(transform.to_bare_matrix())
-                        .color(graphics::Color::BLACK);
-                    canvas.draw(q, param);
+                    graphics::Color::WHITE
+                },
+                1.. =>
+                {
+                    graphics::Color::BLACK
+                },
+            };
+
+            let param = 
+                graphics::DrawParam::new()
+                .transform(transform.to_bare_matrix())
+                .color(color);
+
+            param
+        })).flatten();
+
+        // println!("params created");
+
+        self.quad_batch.set(draw_params);
+        // println!("batch params set");
+        // draw grid
+        // for row in 0..self.grid.height
+        // {
+        //     for col in 0..self.grid.width
+        //     {
+        //         // let col = row;
+
+        //         if *self.grid.index(col, row).unwrap() != 0
+        //         {
+        //             let transform = graphics::Transform::Values { dest: [(2 * row) as f32, (2 * col) as f32].into(), rotation: 0.0, scale: [2.0, 2.0].into(), offset: [0.0, 0.0].into() };
+        //             let param = 
+        //                 graphics::DrawParam::new()
+        //                 .transform(transform.to_bare_matrix())
+        //                 .color(graphics::Color::BLACK);
+        //             canvas.draw(q, param);
                     
-                }
-            }
-        }
+        //         }
+        //     }
+        // }
+
+        canvas.draw(&self.quad_batch, graphics::DrawParam::default());
+        // println!("canvas.draw called");
+
+        // canvas.draw(&self.quad_batch, param);
 
         canvas.finish(context)?;
+        // println!("canvas.finish");
 
         context.gfx.present(&self.screen.image(context))?;
 
         ggez::timer::yield_now();
         
         // println!("draw call done");
+
+        // println!("end of draw call {}", context.time.ticks());
 
         Ok(())    
     }
@@ -73,12 +127,14 @@ impl ggez::event::EventHandler for MainState
 
     fn key_down_event(
             &mut self,
-            _ctx: &mut ggez::Context,
+            context: &mut ggez::Context,
             input: ggez::input::keyboard::KeyInput,
             _repeated: bool,
         ) -> Result<(), ggez::GameError> 
     {
         use ggez::input::keyboard::KeyCode::*;
+
+        println!("start of key down event {}", context.time.ticks());
 
         if let Some(kc) = input.keycode
         {
@@ -121,6 +177,8 @@ impl ggez::event::EventHandler for MainState
             }
         }
         
+        println!("end of key down event {}", context.time.ticks());
+
         Ok(())    
     }
 }
