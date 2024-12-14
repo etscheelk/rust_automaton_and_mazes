@@ -1,0 +1,32 @@
+[package]
+name = "mazes"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+# crate-type = ["cdylib"]
+# bench = false
+name = "mazes"
+path = "./src/lib.rs"
+
+[profile.dev]
+opt-level = 1
+
+[profile.dev.package."*"]
+opt-level = 3
+
+[dependencies]
+cellular-automaton = "0.1.10"
+rand = "0.8.5"
+
+[[test]]
+name = "maze_gui_tests"
+path = "maze_gui_tests/main.rs"
+harness = false
+
+
+[dev-dependencies]
+# mazes = { path = "./" }
+ggez = { version = "0.9.3" }
+crevice = { version = "0.13.0", features = ["glam"] }
+bytemuck = { version = "1.12", features = ["derive"] }
