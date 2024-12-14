@@ -163,7 +163,7 @@ impl Grid
         ].into_iter()
     }
 
-    pub fn index_map(width: isize, height: isize, i: isize, j: isize) -> isize
+    pub fn index_map(width: isize, _height: isize, i: isize, j: isize) -> isize
     {
         i + j * width
     }
@@ -335,7 +335,7 @@ where
     }
 }
 
-fn main()
+fn _main()
 {
     let mut at = Automaton::new_from_dims(32, 32, ConstRules::<1, 0>::SEEDS);
     at.grid.array[100] = 1;
