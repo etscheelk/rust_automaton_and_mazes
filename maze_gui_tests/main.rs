@@ -2,18 +2,24 @@ use mazes::*;
 
 struct MainState
 {
+    screen: ggez::graphics::ScreenImage,
     grid: Grid,
+    quad: ggez::graphics::Quad,
 }
 
 impl MainState
 {
-    fn new() -> Self
+    fn new(context: &mut ggez::Context) -> Self
     {
         let grid = Grid::new(512, 512);
+        let screen = ggez::graphics::ScreenImage::new(context, ggez::graphics::ImageFormat::Rgba8Unorm, 1.0, 1.0, 1);
+        let quad = ggez::graphics::Quad;
 
         MainState 
         {  
+            screen,
             grid,
+            quad,
         }
     }
 }
@@ -24,11 +30,11 @@ impl ggez::event::EventHandler for MainState
     {
         use ggez::graphics;
 
-        let mut canvas = graphics::Canvas::from_frame(context, graphics::Color::WHITE);
+        let mut canvas = graphics::Canvas::from_screen_image(context, &mut self.screen, graphics::Color::WHITE);
 
-        canvas.set_sampler(graphics::Sampler::nearest_clamp());
+        // canvas.set_sampler(graphics::Sampler::nearest_clamp());
 
-        let q = graphics::Quad;
+        let ref q = self.quad;
 
         // draw grid
         for row in 0..self.grid.height
@@ -44,12 +50,15 @@ impl ggez::event::EventHandler for MainState
                         graphics::DrawParam::new()
                         .transform(transform.to_bare_matrix())
                         .color(graphics::Color::BLACK);
-                    canvas.draw(&q, param);
+                    canvas.draw(q, param);
+                    
                 }
             }
         }
 
         canvas.finish(context)?;
+
+        context.gfx.present(&self.screen.image(context))?;
 
         ggez::timer::yield_now();
         
@@ -125,9 +134,9 @@ fn main() -> ggez::GameResult
     .window_setup(conf::WindowSetup::default())
     .window_mode(conf::WindowMode::default().dimensions(1024.0, 1024.0));
 
-    let (context, event_loop) = cb.build()?;
+    let (mut context, event_loop) = cb.build()?;
 
-    let game = MainState::new();
+    let game = MainState::new(&mut context);
 
     event::run(context, event_loop, game);
 }
