@@ -1,123 +1,44 @@
-// use cellular_automaton::rule::Survival;
-// use rand::Rng;
-
-
-
-// fn main() 
-// {
-//     const HALF_DIM: isize = 16;
-
-//     let mut arr = [false; (2*HALF_DIM*2*HALF_DIM) as usize]; // 512x512 grid of bytes (inefficient)
-//     let mut other = arr.clone();
-
-//     let index_map = 
-//     |x: isize, y: isize| -> usize
-//     {
-//         // 0, 0 should return a pixel somewhat in the middle
-//         // range [-256, 255] in x and y
-//         // assert!(x >= -HALF_DIM as isize && x <= HALF_DIM-1 as isize);
-//         // assert!(y >= -HALF_DIM as isize && y <= HALF_DIM-1 as isize);
-
-//         let nx = x + HALF_DIM;
-//         let ny = y + HALF_DIM;
-
-//         let s = nx + ny * 2 * HALF_DIM;
-
-//         s as usize
-//     };
-
-//     let mut rng = rand::thread_rng();
-//     for x in -10..10
-//     {
-//         for y in -10..10
-//         {
-//             // arr[index_map(x, y)] = rng.gen();
-//             if let Some(v) = arr.get_mut(index_map(x, y))
-//             {
-//                 *v = rng.gen();
-//             }
-//         }
-//     }
-
-//     fn get_neighbors(x: isize, y: isize) -> impl Iterator<Item = (isize, isize)>
-//     {
-//         let v = vec![
-//             (x-1, y-1), (x, y-1),   (x+1, y-1),
-//             (x-1, y),               (x+1, y),
-//             (x-1, y+1), (x, y+1),   (x+1, y+1)
-//         ].into_iter();
-
-//         v
-//     }
-
-//     // steps
-//     for _ in 0..1000
-//     {
-//         // iterate over every cell
-//         for x in -HALF_DIM..HALF_DIM
-//         {
-//             for y in -HALF_DIM..HALF_DIM
-//             {
-
-//                 let n = 
-//                 get_neighbors(x, y)
-//                 .map(|(x, y)| index_map(x, y))
-//                 .map(|e| arr.get(e))
-//                 .fold(0, 
-//                 |acc, e|
-//                 {
-//                     acc + if e == Some(&true) { 1 } else { 0 }
-//                 });
-
-//                 let b = arr[index_map(x, y)];
-//                 match b
-//                 {
-//                     true =>
-//                     {
-
-//                     },
-//                     false =>
-//                     {
-//                         if n == 2
-//                         {
-//                             other[index_map(x, y)] = true;
-//                         }
-//                     }
-//                 };
-
-//                 std::mem::swap(&mut arr, &mut other);
-//             }
-//         }
-//     }
-
-//     for y in -HALF_DIM..HALF_DIM
-//     {
-//         for x in -HALF_DIM..HALF_DIM
-//         {
-//             print!("{} ", if arr[index_map(x, y)] { 1 } else { 0 });
-//         }
-//         println!();
-//     }
-
-//     let mut at = cellular_automaton::life_like::Automaton::new(32, 32);
-//     at.set_cells_on(&[16, 16, 16, 17, 16, 18]);
-    
-//     let seeds_rule = cellular_automaton::ruleset::BSC::new(&[2], &[], 1);
-//     let mut at = cellular_automaton::life_like::Automaton::new(32, 32);
-//     at.rules = seeds_rule;
-//     at.randomize_cells(0.5);
-//     println!("{:?}", <Vec<Vec<_>>>::from(&at));
-//     at.step();
-//     println!("{:?}", <Vec<Vec<_>>>::from(&at));
-// }
-
+use mint::Point2;
 
 #[derive(Clone, Debug)]
 pub struct Grid
 {
-    pub width:  isize,
-    pub height: isize,
+    pub dim: GridDim,
     pub array:  Vec<u8>,
+}
+
+#[derive(Clone, Debug, Copy)]
+pub struct GridDim
+{
+    pub width: isize,
+    pub height: isize,
+}
+
+impl GridDim
+{
+    pub fn index_map(&self, p: impl Into<Point2<isize>>) -> isize
+    {
+        let p = p.into();
+        p.x + p.y * self.width
+    }
+}
+
+impl std::ops::Deref for Grid
+{
+    type Target = GridDim;
+
+    fn deref(&self) -> &Self::Target 
+    {
+        &self.dim
+    }
+}
+
+impl std::ops::DerefMut for Grid
+{
+    fn deref_mut(&mut self) -> &mut Self::Target 
+    {
+        &mut self.dim    
+    }
 }
 
 impl std::fmt::Display for Grid
@@ -130,7 +51,7 @@ impl std::fmt::Display for Grid
         {
             for col in 0..self.width
             {
-                write!(f, "{} ", self.array[Grid::index_map(self.width, self.height, col, row) as usize])?;
+                write!(f, "{} ", self.array[self.index_map([col, row]) as usize])?;
             }
             write!(f, "\n")?;
         }
@@ -146,51 +67,80 @@ impl Grid
         assert!(width > 0);
         assert!(height > 0);
 
+        let dim = GridDim { width, height };
+
         Grid
         {
-            width,
-            height,
+            dim,
             array: vec![0; (width * height) as usize],
         }
     }
 
-    fn neighbors_of(i: isize, j: isize) -> impl Iterator<Item = (isize, isize)>
+    pub fn neighbors_of(p: impl Into<Point2<isize>>) -> impl Iterator<Item = Point2<isize>>
     {
+        let p = p.into();
+        let x = p.x;
+        let y = p.y;
         [
-            (i-1, j-1), (i, j-1),   (i+1, j-1),
-            (i-1, j),               (i+1, j),
-            (i-1, j+1), (i, j+1),   (i+1, j+1)
+            [x-1, y-1].into(),  [x, y-1].into(),    [x+1, y-1].into(),
+            [x-1, y].into(),                        [x+1, y].into(),
+            [x-1, y+1].into(),  [x, y+1].into(),    [x+1, y+1].into()
         ].into_iter()
     }
 
-    pub fn index_map(width: isize, _height: isize, i: isize, j: isize) -> isize
+    // pub fn valid_neighbors_of(p: impl Into<Point2<isize>>) -> impl Iterator<Item = Point2<isize>>
+    // {
+
+    // }
+
+    pub fn distance_chebyshev(a: impl Into<Point2<isize>>, b: impl Into<Point2<isize>>) -> isize
     {
-        i + j * width
+        let a = a.into();
+        let b = b.into();
+
+        isize::max(isize::abs(a.x - b.x), isize::abs(a.y - b.y))
     }
 
-    pub fn index(&self, i: isize, j: isize) -> Option<&u8>
+    pub fn index(&self, p: impl Into<Point2<isize>>) -> Option<&u8>
     {
         // &self.array[Self::index_map(self.width, self.height, i, j)]
-        self.array.get(Self::index_map(self.width, self.height, i, j) as usize)
+        self.array.get(self.index_map(p) as usize)
     }
 
-    pub fn index_mut(&mut self, i: isize, j: isize) -> Option<&mut u8>
+    pub fn index_mut(&mut self, p: impl Into<Point2<isize>>) -> Option<&mut u8>
     {
-        // &mut self.array[Self::index_map(self.width, self.height, i, j)]
-        self.array.get_mut(Self::index_map(self.width, self.height, i, j) as usize)
+        self.array.get_mut(self.dim.index_map(p) as usize)
     }
 
-    pub fn sum_neighbors_with_outside_dead(&self, i: isize, j: isize) -> u8
+    pub fn sum_neighbors_with_outside_dead(&self, p: impl Into<Point2<isize>>) -> u8
     {
-        Self::neighbors_of(i, j)
+        Self::neighbors_of(p)
         .fold(0, 
-        |acc, (i, j)|
+        |acc, p|
         {
-            acc + if let Some(v) = self.index(i, j) { if *v > 0 { 1 } else { 0 } } else { 0 }
+            acc + if let Some(v) = self.index(p) { if *v > 0 { 1 } else { 0 } } else { 0 }
         })
     }
 
-    
+    pub fn find_path_of_zeroes(&self, start: Point2<isize>, end: Point2<isize>)
+    {
+        use std::collections::{BinaryHeap, HashMap, HashSet, VecDeque};
+        
+        // TODO: Check that start and end are inside this grid
+        // TODO: Check that start and end are at points with zeroes
+
+        // depth-first search
+        let mut q = VecDeque::<Point2<isize>>::new();
+        q.push_back(start);
+
+        while !q.is_empty()
+        {
+            let p = q.front().unwrap();
+
+        }
+
+        todo!()
+    }    
 }
 
 pub trait IsRules
@@ -304,19 +254,20 @@ where
 
     pub fn step(&mut self)
     {
-        for j in 0..self.grid.height
+        for y in 0..self.grid.height
         {
-            for i in 0..self.grid.width
+            for x in 0..self.grid.width
             {
-                let alive_neighbors = self.grid.sum_neighbors_with_outside_dead(i, j);
-                match self.grid.index(i, j).unwrap()
+                let p = Point2 { x, y };
+                let alive_neighbors = self.grid.sum_neighbors_with_outside_dead(p);
+                match self.grid.index(p).unwrap()
                 {
                     // dead
                     0 =>
                     {
                         if self.rules.get_birth().any(|e| *e == alive_neighbors)
                         {
-                            *self.other_grid.index_mut(i, j).unwrap() = 1;
+                            *self.other_grid.index_mut(p).unwrap() = 1;
                         }
                     },
                     // alive
@@ -324,7 +275,7 @@ where
                     {
                         if !self.rules.get_surive().any(|e|*e == alive_neighbors)
                         {
-                            *self.other_grid.index_mut(i, j).unwrap() = 0;
+                            *self.other_grid.index_mut(p).unwrap() = 0;
                         }
                     }
                 };

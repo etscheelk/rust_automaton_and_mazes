@@ -17,6 +17,7 @@ opt-level = 3
 
 [dependencies]
 cellular-automaton = "0.1.10"
+mint = "0.5.9"
 rand = "0.8.5"
 
 [[test]]
