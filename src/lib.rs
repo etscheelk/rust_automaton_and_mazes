@@ -1,5 +1,3 @@
-use std::{collections::HashSet, hash::Hash};
-
 use mint::Point2;
 
 #[derive(Clone, Debug)]
@@ -130,7 +128,7 @@ impl Grid
         })
     }
 
-    pub fn find_path_of_zeroes(&self, start: Point2<isize>, end: Point2<isize>) -> Option<HashSet<Point2<isize>>>
+    pub fn find_path_of_zeroes(&self, start: Point2<isize>, end: Point2<isize>) -> Option<std::collections::HashSet<Point2<isize>>>
     {
         use std::collections::{HashMap, HashSet, VecDeque};
         

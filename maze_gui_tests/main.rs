@@ -1,4 +1,3 @@
-use std::{collections::{HashMap, HashSet}, i32};
 use ggez::mint::Point2;
 
 use mazes::*;
@@ -10,7 +9,7 @@ struct MainState
     _quad: ggez::graphics::Quad,
     quad_batch: ggez::graphics::InstanceArray,
     input_state: InputState,
-    path: Option<HashSet<Point2<isize>>>,
+    path: Option<std::collections::HashSet<Point2<isize>>>,
 }
 
 #[derive(Default, Debug, Clone)]
