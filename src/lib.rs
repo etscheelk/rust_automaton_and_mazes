@@ -128,9 +128,102 @@ impl Grid
         })
     }
 
+    /// start at end and trace back to start
+    fn trace_back(
+        start: Point2<isize>, 
+        end: Point2<isize>, 
+        prev: &std::collections::HashMap<Point2<isize>, Point2<isize>>
+    ) -> std::collections::HashSet<Point2<isize>>
+    {
+        let mut pt = end;
+
+        let mut ret = std::collections::HashSet::new();
+
+        while pt != start
+        {
+            ret.insert(pt);
+
+            pt = prev[&pt];
+        }
+        
+        ret
+    }
+
+    pub fn find_path_with_a_star(&self, start: Point2<isize>, end: Point2<isize>) -> Option<std::collections::HashSet<Point2<isize>>>
+    {
+        use std::collections::{HashMap, BinaryHeap};
+
+        let mut prev = HashMap::new();
+        prev.insert(start, start);
+
+
+        #[derive(Eq, PartialEq, PartialOrd)]
+        struct PointDist(Point2<isize>, isize);
+        // impl PartialEq for PointDist
+        // {
+        //     fn eq(&self, other: &Self) -> bool 
+        //     {
+        //         self.1.eq(&other.1)
+        //     }
+        // }
+
+        // impl PartialOrd for PointDist
+        // {
+        //     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> 
+        //     {
+        //         self.1.partial_cmp(&other.1)    
+        //     }
+        // }
+
+        impl Ord for PointDist
+        {
+            fn cmp(&self, other: &Self) -> std::cmp::Ordering 
+            {
+                // self.1.cmp(&other.1) // put max value on top
+                other.1.cmp(&self.1) // put min on top
+            }
+        }
+
+        let mut distance_from_start_to = HashMap::new();
+        distance_from_start_to.insert(start, 0);
+
+        // we need a priority queue of points with estimates of distances to the end
+        // g(n) is the distance from start to curr, h(n) is an estimate of distance from curr to end
+        let mut heap = BinaryHeap::<PointDist>::new();
+
+        // let _ = distance([1, 2], [3, 4]);
+
+        heap.push(PointDist(start, Grid::distance_chebyshev(start, end) + 0));
+
+        while !heap.is_empty()
+        {
+            // take the minimum distance point
+            let p = heap.pop().unwrap();
+            distance_from_start_to.insert(p.0, p.1);
+
+            if p.0 == end
+            {
+                return Some(Grid::trace_back(start, end, &prev));
+            }
+
+            for neighbor in self.valid_neighbors_of(p.0)
+            {
+                if !prev.contains_key(&neighbor) && *self.index(p.0).unwrap() == 0
+                {
+                    prev.insert(neighbor, p.0);
+
+                    heap.push(PointDist(neighbor, Grid::distance_chebyshev(neighbor, end) + *distance_from_start_to.get(&p.0).unwrap() + 1));
+                }
+            }
+        }
+        
+        
+        None
+    }
+
     pub fn find_path_of_zeroes(&self, start: Point2<isize>, end: Point2<isize>) -> Option<std::collections::HashSet<Point2<isize>>>
     {
-        use std::collections::{HashMap, HashSet, VecDeque};
+        use std::collections::{HashMap, VecDeque};
         
         // TODO: Check that start and end are inside this grid
         // TODO: Check that start and end are at points with zeroes
@@ -142,33 +235,12 @@ impl Grid
         let mut prev = HashMap::new();
         prev.insert(start, start);
 
-        /// start at end and trace back to start
-        fn trace_back(
-            start: Point2<isize>, 
-            end: Point2<isize>, 
-            prev: &HashMap<Point2<isize>, Point2<isize>>
-        ) -> HashSet<Point2<isize>>
-        {
-            let mut pt = end;
-
-            let mut ret = HashSet::new();
-
-            while pt != start
-            {
-                ret.insert(pt);
-
-                pt = prev[&pt];
-            }
-            
-            ret
-        }
-
         while !stack.is_empty()
         {
             let p = stack.pop_front().unwrap();
             if p == end
             {
-                return Some(trace_back(start, end, &prev));
+                return Some(Grid::trace_back(start, end, &prev));
             }
 
             for neighbor in self.valid_neighbors_of(p)

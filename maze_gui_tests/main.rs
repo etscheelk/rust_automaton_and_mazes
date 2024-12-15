@@ -326,7 +326,8 @@ impl ggez::event::EventHandler for MainState
                         let rc = Point2 { x: rc.x as isize, y: rc.y as isize };
 
                         let s = 
-                            self.grid.find_path_of_zeroes(lc, rc);
+                            // self.grid.find_path_of_zeroes(lc, rc);
+                            self.grid.find_path_with_a_star(lc, rc);
 
                         self.path = s;
                     }
