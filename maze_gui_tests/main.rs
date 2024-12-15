@@ -313,7 +313,8 @@ impl ggez::event::EventHandler for MainState
                 },
                 Left =>
                 {
-                    let rules = ConstRules::<1, 5>::MAZE;
+                    // let rules = ConstRules::<1, 5>::MAZE;
+                    let rules = DynamicRules::new(&[3], &[1,2,3,5]);
 
                     rs = Some(rules.into());
                 },
@@ -322,12 +323,16 @@ impl ggez::event::EventHandler for MainState
                     if let (Some(lc), Some(rc)) = 
                         (self.input_state.left_click, self.input_state.right_click)
                     {
+                        println!("Calculating a path, if possible");
+
                         let lc = Point2 { x: lc.x as isize, y: lc.y as isize };
                         let rc = Point2 { x: rc.x as isize, y: rc.y as isize };
 
                         let s = 
                             // self.grid.find_path_of_zeroes(lc, rc);
                             self.grid.find_path_with_a_star(lc, rc);
+
+                        println!("path found? {}", s.is_some());
 
                         self.path = s;
                     }

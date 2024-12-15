@@ -88,10 +88,29 @@ impl Grid
         ].into_iter()
     }
 
-    /// Return an iterator of all the points that are inbounds
-    pub fn valid_neighbors_of<'a>(&'a self, p: impl Into<Point2<isize>> + 'a) -> impl Iterator<Item = Point2<isize>> + 'a
+    // return neighbors only in 
+    pub fn neighbors_of_limited(p: impl Into<Point2<isize>>) -> impl Iterator<Item = Point2<isize>>
     {
-        Grid::neighbors_of(p)
+        let p = p.into();
+        let x = p.x;
+        let y = p.y;
+
+        [
+                                [x, y-1].into(),
+            [x-1, y].into(),                        [x+1, y].into(),
+                                [x, y+1].into(),     
+        ].into_iter()
+    }
+
+    /// Return an iterator of all the points that are inbounds
+    pub fn valid_neighbors_of<'a>
+    (
+        &'a self, 
+        neighbors: impl Iterator<Item = Point2<isize>> + 'a,
+    ) -> impl Iterator<Item = Point2<isize>> + 'a
+    {
+        // Grid::neighbors_of(p)
+        neighbors
         .filter(|&e|
         {
             0 <= e.x && e.x < self.width &&
@@ -105,6 +124,14 @@ impl Grid
         let b = b.into();
 
         isize::max(isize::abs(a.x - b.x), isize::abs(a.y - b.y))
+    }
+
+    pub fn distance_cityblock(a: impl Into<Point2<isize>>, b: impl Into<Point2<isize>>) -> isize
+    {
+        let a = a.into();
+        let b = b.into();
+
+        isize::abs(a.x - b.x) + isize::abs(a.y - b.y)
     }
 
     pub fn index(&self, p: impl Into<Point2<isize>>) -> Option<&u8>
@@ -151,71 +178,94 @@ impl Grid
 
     pub fn find_path_with_a_star(&self, start: Point2<isize>, end: Point2<isize>) -> Option<std::collections::HashSet<Point2<isize>>>
     {
-        use std::collections::{HashMap, BinaryHeap};
+        use std::collections::{HashMap, BinaryHeap, HashSet};
 
         let mut prev = HashMap::new();
         prev.insert(start, start);
 
 
-        #[derive(Eq, PartialEq, PartialOrd)]
-        struct PointDist(Point2<isize>, isize);
-        // impl PartialEq for PointDist
+        // #[derive(Eq, PartialEq, PartialOrd)]
+        // struct PointDist(Point2<isize>, isize);
+        // // impl PartialEq for PointDist
+        // // {
+        // //     fn eq(&self, other: &Self) -> bool 
+        // //     {
+        // //         self.1.eq(&other.1)
+        // //     }
+        // // }
+
+        // // impl PartialOrd for PointDist
+        // // {
+        // //     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> 
+        // //     {
+        // //         self.1.partial_cmp(&other.1)    
+        // //     }
+        // // }
+
+        // impl Ord for PointDist
         // {
-        //     fn eq(&self, other: &Self) -> bool 
+        //     fn cmp(&self, other: &Self) -> std::cmp::Ordering 
         //     {
-        //         self.1.eq(&other.1)
+        //         // self.1.cmp(&other.1) // put max value on top
+        //         other.1.cmp(&self.1) // put min on top
         //     }
         // }
 
-        // impl PartialOrd for PointDist
-        // {
-        //     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> 
-        //     {
-        //         self.1.partial_cmp(&other.1)    
-        //     }
-        // }
+        let mut g_distance_from_start_to_or_inf = 
+            HashMap::from([(start, 0)]);
 
-        impl Ord for PointDist
+        let mut f_dist_from_to_end = 
+            HashMap::from([(start, Grid::distance_cityblock(start, end))]);
+
+        let mut frontier = HashSet::from([start]);
+
+        while !frontier.is_empty()
         {
-            fn cmp(&self, other: &Self) -> std::cmp::Ordering 
+            // find cheapest node
+            let mut current = None;
+            let mut cost = isize::MAX;
+            for &node in &frontier
             {
-                // self.1.cmp(&other.1) // put max value on top
-                other.1.cmp(&self.1) // put min on top
+                let this_cost = *f_dist_from_to_end.get(&node).unwrap_or(&isize::MAX);
+                if this_cost < cost
+                {
+                    current = Some(node);
+                    cost = this_cost;
+                }
             }
-        }
 
-        let mut distance_from_start_to = HashMap::new();
-        distance_from_start_to.insert(start, 0);
-
-        // we need a priority queue of points with estimates of distances to the end
-        // g(n) is the distance from start to curr, h(n) is an estimate of distance from curr to end
-        let mut heap = BinaryHeap::<PointDist>::new();
-
-        // let _ = distance([1, 2], [3, 4]);
-
-        heap.push(PointDist(start, Grid::distance_chebyshev(start, end) + 0));
-
-        while !heap.is_empty()
-        {
-            // take the minimum distance point
-            let p = heap.pop().unwrap();
-            distance_from_start_to.insert(p.0, p.1);
-
-            if p.0 == end
+            let current = current.unwrap();
+            if current == end
             {
                 return Some(Grid::trace_back(start, end, &prev));
             }
 
-            for neighbor in self.valid_neighbors_of(p.0)
-            {
-                if !prev.contains_key(&neighbor) && *self.index(p.0).unwrap() == 0
-                {
-                    prev.insert(neighbor, p.0);
+            frontier.remove(&current);
 
-                    heap.push(PointDist(neighbor, Grid::distance_chebyshev(neighbor, end) + *distance_from_start_to.get(&p.0).unwrap() + 1));
+            // for neighbor in self.valid_neighbors_of(current)
+            for neighbor in self.valid_neighbors_of(Grid::neighbors_of_limited(current))
+            {
+                if *self.index(neighbor).unwrap() > 0 { continue }
+
+                let tentative_g_score = 
+                    g_distance_from_start_to_or_inf.get(&current).unwrap_or(&(isize::MAX-1)) + 1;
+                if tentative_g_score < *g_distance_from_start_to_or_inf.get(&neighbor).unwrap_or(&(isize::MAX))
+                {
+                    prev.insert(neighbor, current);
+                    g_distance_from_start_to_or_inf.insert(neighbor, tentative_g_score);
+                    f_dist_from_to_end.insert(neighbor, tentative_g_score + Grid::distance_cityblock(neighbor, end));
+
+                    if !frontier.contains(&neighbor)
+                    {
+                        frontier.insert(neighbor);
+                    }
                 }
             }
         }
+
+        // we need a priority queue of points with estimates of distances to the end
+        // g(n) is the distance from start to curr, h(n) is an estimate of distance from curr to end
+        
         
         
         None
@@ -243,7 +293,8 @@ impl Grid
                 return Some(Grid::trace_back(start, end, &prev));
             }
 
-            for neighbor in self.valid_neighbors_of(p)
+            // for neighbor in self.valid_neighbors_of(p)
+            for neighbor in self.valid_neighbors_of(Grid::neighbors_of_limited(p))
             {
                 if !prev.contains_key(&neighbor) && *self.index(p).unwrap() == 0
                 {
