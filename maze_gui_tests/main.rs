@@ -9,7 +9,18 @@ struct MainState
     grid: Grid,
     _quad: ggez::graphics::Quad,
     quad_batch: ggez::graphics::InstanceArray,
+    input_state: InputState,
+    path: Option<HashSet<Point2<isize>>>,
 }
+
+#[derive(Default, Debug, Clone)]
+struct InputState
+{
+    left_click: Option<Point2<f32>>,
+    right_click: Option<Point2<f32>>,
+}
+
+
 
 
 
@@ -120,7 +131,8 @@ impl MainState
         let screen = ggez::graphics::ScreenImage::new(context, ggez::graphics::ImageFormat::Rgba8Unorm, 1.0, 1.0, 1);
         let quad = ggez::graphics::Quad;
         let quad_batch = ggez::graphics::InstanceArray::new(context, None);
-
+        let input_state = InputState::default();
+        let path = None;
         println!("main state created");
 
         MainState 
@@ -129,6 +141,8 @@ impl MainState
             grid,
             _quad: quad,
             quad_batch,
+            input_state,
+            path,
         }
     }
 }
@@ -145,11 +159,13 @@ impl ggez::event::EventHandler for MainState
 
         // canvas.set_sampler(graphics::Sampler::nearest_clamp());
         let ref grid = self.grid;
-        // let ref q = self.quad;
+        let ref q = self._quad;
 
         let rotation = 0.0;
         let scale = [2.0, 2.0].into();
         let offset = [0.0, 0.0].into();
+
+        let path = self.path.as_ref();
 
         let draw_params = 
         (0..grid.height).into_iter()
@@ -165,7 +181,7 @@ impl ggez::event::EventHandler for MainState
                 offset, 
             };
 
-            let color = 
+            let mut color = 
             match grid.index([c, r]).unwrap()
             {
                 0 =>
@@ -177,6 +193,14 @@ impl ggez::event::EventHandler for MainState
                     graphics::Color::BLACK
                 },
             };
+
+            if let Some(p) = path
+            {
+                if p.contains(&[c, r].into())
+                {
+                    color = graphics::Color::RED;
+                }
+            }
 
             let param = 
                 graphics::DrawParam::new()
@@ -215,6 +239,29 @@ impl ggez::event::EventHandler for MainState
 
         // canvas.draw(&self.quad_batch, param);
 
+        // draw click points
+        if let Some(lc) = self.input_state.left_click
+        {
+            // convert to screen coord
+            let param = 
+                graphics::DrawParam::new()
+                .dest([lc.x * 2.0, lc.y * 2.0])
+                .color(graphics::Color::BLUE)
+                .scale([3.0, 3.0]);
+            canvas.draw(q, param);
+        }
+
+        if let Some(rc) = self.input_state.right_click
+        {
+            // convert to screen coord
+            let param = 
+                graphics::DrawParam::new()
+                .dest([rc.x * 2.0, rc.y * 2.0])
+                .color(graphics::Color::GREEN)
+                .scale([3.0, 3.0]);
+            canvas.draw(q, param);
+        }
+
         canvas.finish(context)?;
         // println!("canvas.finish");
 
@@ -235,13 +282,13 @@ impl ggez::event::EventHandler for MainState
 
     fn key_down_event(
             &mut self,
-            context: &mut ggez::Context,
+            _context: &mut ggez::Context,
             input: ggez::input::keyboard::KeyInput,
             _repeated: bool,
         ) -> Result<(), ggez::GameError> 
     {
         use ggez::input::keyboard::KeyCode::*;
-
+        
         if let Some(kc) = input.keycode
         {
             let mut rs: Option<DynamicRules> = None;
@@ -271,6 +318,24 @@ impl ggez::event::EventHandler for MainState
 
                     rs = Some(rules.into());
                 },
+                P =>
+                {
+                    if let (Some(lc), Some(rc)) = 
+                        (self.input_state.left_click, self.input_state.right_click)
+                    {
+                        let lc = Point2 { x: lc.x as isize, y: lc.y as isize };
+                        let rc = Point2 { x: rc.x as isize, y: rc.y as isize };
+
+                        let s = 
+                            self.grid.find_path_of_zeroes(lc, rc);
+
+                        self.path = s;
+                    }
+                },
+                C =>
+                {
+                    self.path = None
+                },
                 _ => (),
             };
 
@@ -296,6 +361,35 @@ impl ggez::event::EventHandler for MainState
         }
 
         Ok(())    
+    }
+
+    fn mouse_button_down_event(
+            &mut self,
+            _ctx: &mut ggez::Context,
+            button: ggez::event::MouseButton,
+            x: f32,
+            y: f32,
+        ) -> Result<(), ggez::GameError> 
+    {
+        use ggez::event::MouseButton::*;
+
+        let ref mut input_state = self.input_state;
+
+        match button
+        {
+            // convert clicks to world coords
+            Left =>
+            {
+                input_state.left_click = Some([x / 2.0, y / 2.0].into());
+            },
+            Right =>
+            {
+                input_state.right_click = Some([x / 2.0, y / 2.0].into());
+            },
+            _ => ()
+        };
+
+        Ok(())
     }
 }
 

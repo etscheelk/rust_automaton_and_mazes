@@ -1,3 +1,5 @@
+use std::{collections::HashSet, hash::Hash};
+
 use mint::Point2;
 
 #[derive(Clone, Debug)]
@@ -88,10 +90,16 @@ impl Grid
         ].into_iter()
     }
 
-    // pub fn valid_neighbors_of(p: impl Into<Point2<isize>>) -> impl Iterator<Item = Point2<isize>>
-    // {
-
-    // }
+    /// Return an iterator of all the points that are inbounds
+    pub fn valid_neighbors_of<'a>(&'a self, p: impl Into<Point2<isize>> + 'a) -> impl Iterator<Item = Point2<isize>> + 'a
+    {
+        Grid::neighbors_of(p)
+        .filter(|&e|
+        {
+            0 <= e.x && e.x < self.width &&
+            0 <= e.y && e.y < self.height
+        })
+    }
 
     pub fn distance_chebyshev(a: impl Into<Point2<isize>>, b: impl Into<Point2<isize>>) -> isize
     {
@@ -122,24 +130,61 @@ impl Grid
         })
     }
 
-    pub fn find_path_of_zeroes(&self, start: Point2<isize>, end: Point2<isize>)
+    pub fn find_path_of_zeroes(&self, start: Point2<isize>, end: Point2<isize>) -> Option<HashSet<Point2<isize>>>
     {
-        use std::collections::{BinaryHeap, HashMap, HashSet, VecDeque};
+        use std::collections::{HashMap, HashSet, VecDeque};
         
         // TODO: Check that start and end are inside this grid
         // TODO: Check that start and end are at points with zeroes
 
         // depth-first search
-        let mut q = VecDeque::<Point2<isize>>::new();
-        q.push_back(start);
+        let mut stack = VecDeque::new();
+        stack.push_back(start);
 
-        while !q.is_empty()
+        let mut prev = HashMap::new();
+        prev.insert(start, start);
+
+        /// start at end and trace back to start
+        fn trace_back(
+            start: Point2<isize>, 
+            end: Point2<isize>, 
+            prev: &HashMap<Point2<isize>, Point2<isize>>
+        ) -> HashSet<Point2<isize>>
         {
-            let p = q.front().unwrap();
+            let mut pt = end;
 
+            let mut ret = HashSet::new();
+
+            while pt != start
+            {
+                ret.insert(pt);
+
+                pt = prev[&pt];
+            }
+            
+            ret
         }
 
-        todo!()
+        while !stack.is_empty()
+        {
+            let p = stack.pop_front().unwrap();
+            if p == end
+            {
+                return Some(trace_back(start, end, &prev));
+            }
+
+            for neighbor in self.valid_neighbors_of(p)
+            {
+                if !prev.contains_key(&neighbor) && *self.index(p).unwrap() == 0
+                {
+                    prev.insert(neighbor, p);
+
+                    stack.push_back(neighbor);
+                }
+            }
+        }
+
+        None
     }    
 }
 
