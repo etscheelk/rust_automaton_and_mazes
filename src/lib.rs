@@ -16,7 +16,7 @@ pub struct GridDim
 
 impl GridDim
 {
-    pub fn index_map(&self, p: impl Into<Point2<isize>>) -> isize
+    pub fn  index_map(&self, p: impl Into<Point2<isize>>) -> isize
     {
         let p = p.into();
         p.x + p.y * self.width
@@ -178,7 +178,7 @@ impl Grid
 
     pub fn find_path_with_a_star(&self, start: Point2<isize>, end: Point2<isize>) -> Option<std::collections::HashSet<Point2<isize>>>
     {
-        use std::collections::{HashMap, BinaryHeap, HashSet};
+        use std::collections::{HashMap, HashSet};
 
         let mut prev = HashMap::new();
         prev.insert(start, start);
@@ -498,25 +498,20 @@ where
             for x in 0..self.grid.width
             {
                 let p = Point2 { x, y };
-                let alive_neighbors = self.grid.sum_neighbors_with_outside_dead(p);
+                let num_alive_neighbors = self.grid.sum_neighbors_with_outside_dead(p);
                 match self.grid.index(p).unwrap()
                 {
                     // dead
-                    0 =>
+                    0 if self.rules.get_birth().any(|&e| e == num_alive_neighbors) =>
                     {
-                        if self.rules.get_birth().any(|e| *e == alive_neighbors)
-                        {
-                            *self.other_grid.index_mut(p).unwrap() = 1;
-                        }
+                        *self.other_grid.index_mut(p).unwrap() = 1;
                     },
                     // alive
-                    1.. =>
+                    1.. if !self.rules.get_surive().any(|&e|e == num_alive_neighbors) =>
                     {
-                        if !self.rules.get_surive().any(|e|*e == alive_neighbors)
-                        {
-                            *self.other_grid.index_mut(p).unwrap() = 0;
-                        }
-                    }
+                        *self.other_grid.index_mut(p).unwrap() = 0; // set to 1 for some cool effects
+                    },
+                    _ => (),
                 };
             }
         }

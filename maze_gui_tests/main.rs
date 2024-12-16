@@ -1,5 +1,3 @@
-use std::str::FromStr;
-
 use ggez::mint::Point2;
 
 use mazes::*;
@@ -128,7 +126,14 @@ impl MainState
 {
     fn new(context: &mut ggez::Context) -> Self
     {
-        let grid = Grid::new(400, 400);
+        let mut grid = Grid::new(400, 400);
+        
+        grid.array[0] = 1;
+        grid.array[1] = 1;
+        *grid.index_mut([100, 100]).unwrap() = 1;
+        *grid.index_mut([100, 101]).unwrap() = 1;
+        
+        
         let screen = ggez::graphics::ScreenImage::new(context, ggez::graphics::ImageFormat::Rgba8Unorm, 1.0, 1.0, 1);
         let quad = ggez::graphics::Quad;
         let quad_batch = ggez::graphics::InstanceArray::new(context, None);
@@ -298,13 +303,11 @@ impl ggez::event::EventHandler for MainState
                 Space =>
                 {
                     let rules = DynamicRules::new(&[2], &[]);
-
                     rs = Some(rules);
                 },
                 Right =>
                 {
                     let rules = ConstRules::<1, 4>::MAZECETRIC;
-
                     rs = Some(rules.into());
                 },
                 Up =>
@@ -374,11 +377,6 @@ impl ggez::event::EventHandler for MainState
             {
                 let mut at = 
                 Automaton::new(self.grid.clone(), r);
-
-                at.grid.array[0] = 1;
-                at.grid.array[1] = 1;
-                *at.grid.index_mut([100, 100]).unwrap() = 1;
-                *at.grid.index_mut([100, 101]).unwrap() = 1;
 
                 for _ in 0..1
                 {
