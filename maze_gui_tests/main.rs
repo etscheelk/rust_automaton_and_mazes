@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 use ggez::mint::Point2;
 
 use mazes::*;
@@ -314,9 +316,33 @@ impl ggez::event::EventHandler for MainState
                 Left =>
                 {
                     // let rules = ConstRules::<1, 5>::MAZE;
+                    // let rules = DynamicRules::new(&[3], &[1,2,3,5]);
                     let rules = DynamicRules::new(&[3], &[1,2,3,5]);
 
+
                     rs = Some(rules.into());
+                },
+                Down =>
+                {
+                    // anneal
+                    // super sick
+                    let rules = DynamicRules::new(&[4,6,7,8], &[3,5,6,7,8]);
+
+                    // reversed mazectric
+                    // let rules = DynamicRules::from_str("B01238/S01234678").unwrap();
+
+                    // 2x2
+                    // boring
+                    // let rules = DynamicRules::new(&[3,6], &[1,2,5]);
+
+                    // diamoeba
+                    // let rules = DynamicRules::from_str("B35678/S5678").unwrap();
+
+                    // replicator
+                    // let rules = DynamicRules::from_str("B1357/S1357").unwrap();
+                    println!("{:?}", rules);
+
+                    rs = Some(rules);
                 },
                 P =>
                 {
@@ -354,7 +380,7 @@ impl ggez::event::EventHandler for MainState
                 *at.grid.index_mut([100, 100]).unwrap() = 1;
                 *at.grid.index_mut([100, 101]).unwrap() = 1;
 
-                for _ in 0..10
+                for _ in 0..1
                 {
                     at.step();
                 }
