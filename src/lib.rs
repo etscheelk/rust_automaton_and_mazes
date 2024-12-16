@@ -352,6 +352,7 @@ impl<const B: usize, const S: usize> ConstRules<B, S>
     }
 }
 
+#[derive(Clone, Debug)]
 pub struct DynamicRules
 {
     birth:      Vec<u8>,
@@ -379,6 +380,78 @@ impl DynamicRules
         {
             birth:      Vec::from(birth),
             survive:    Vec::from(survive),
+        }
+    }
+}
+
+impl std::str::FromStr for DynamicRules
+{
+    type Err = String;
+    fn from_str(s_in: &str) -> Result<Self, Self::Err> 
+    {
+        // find index of B, find index of S
+        let b_loc = s_in.chars().enumerate().find(|c|c.1.to_ascii_lowercase() == 'b');
+        let s_loc = s_in.chars().enumerate().find(|c| c.1.to_ascii_lowercase() == 's');
+
+
+
+
+        if let (Some((b_loc, _)), Some((s_loc, _))) = (b_loc, s_loc)
+        {
+            // B123S123
+            // 01234567
+            // while let Some(d) = s_in.chars().skip(b_loc+1).map(|c| c.to_digit(10))
+            // {
+
+            // }
+
+            // FIXME: Why doesn't fuse work to stop after first failed to_digit?
+            let birth_rules = 
+                s_in.chars().take(s_loc - b_loc - 1)
+                .skip(b_loc+1)
+                .map(|c| c.to_digit(10))
+                .fuse()
+                .flatten()
+                .map(|digit| digit as u8)
+                .collect::<Vec<u8>>();
+
+            let survive_rules = 
+                s_in.chars()
+                .skip(s_loc+1)
+                .map(|c| c.to_digit(10))
+                .fuse()
+                .flatten()
+                .map(|d| d as u8)
+                .collect::<Vec<u8>>();
+
+            // for c in s_in.chars().skip(b_loc+1).take(s_loc - b_loc - 1)
+            // {
+            //     let n: u8 = 
+            //         c.to_digit(10)
+            //         .ok_or(String::from("digit unable to be parsed"))? as u8;
+            //     birth_rules.push(n);
+            // }
+
+            // let mut survive_rules = Vec::new();
+            // // B123S123
+            // // 01234567
+            // for c in s_in.chars().skip(s_loc+1)
+            // {
+            //     let n: u8 = 
+            //         c.to_digit(10)
+            //         .ok_or(String::from("digit unable to be parsed"))? as u8;
+            //     survive_rules.push(n);
+            // }
+            
+            // let birth_rules = Vec::new();
+            
+            // let survive_rules = Vec::new();
+
+            return Ok(DynamicRules::new(&birth_rules, &survive_rules));
+        }
+        else
+        {
+            return Err(String::from("B or S not present in rule string"));
         }
     }
 }
